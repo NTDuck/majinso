@@ -9,12 +9,14 @@ using namespace std;
 // Structure to hold tile coordinates
 struct Vector2i {
     int x, y;
+    Vector2i() = default;
     Vector2i(int _x, int _y) : x(_x), y(_y) {}
 };
 
 // Structure to hold tile coordinates in 3D
 struct Vector3i {
     int x, y, z;
+    Vector3i() = default;
     Vector3i(int _x, int _y, int _z) : x(_x), y(_y), z(_z) {}
 };
 
@@ -169,7 +171,7 @@ int main(int argc, char* argv[])
                     if (k < 0) continue;
                     tileRect.x = k * 48;
                     if (isOpen(x, y, z)) tileRect.y = 66;
-                    SDL_Rect destRect = { x * 22 + z * 4.6, y * 33 - z * 7.1, 48, 66 };
+                    SDL_Rect destRect = { static_cast<int>(x * 22 + z * 4.6), static_cast<int>(y * 33 - z * 7.1), 48, 66 };
                     SDL_RenderCopy(renderer, t1, &tileRect, &destRect);
                 }
 
