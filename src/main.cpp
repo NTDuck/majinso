@@ -5,22 +5,29 @@
 #include <vector>
 #include <ctime>
 using namespace std;
-/// @brief 
+
+// Structure to hold tile coordinates
 struct Vector2i {
     int x, y;
     Vector2i(int _x, int _y) : x(_x), y(_y) {}
 };
 
+// Structure to hold tile coordinates in 3D
 struct Vector3i {
     int x, y, z;
     Vector3i(int _x, int _y, int _z) : x(_x), y(_y), z(_z) {}
 };
 
-int field[50][50][50] = { 0 };
+const int FIELD_X = 50;
+const int FIELD_Y = 50;
+const int FIELD_Z = 50;
+
+int field[FIELD_X + 4][FIELD_Y + 4][FIELD_Z] = {0};
 
 int& f(int x, int y, int z) { return field[y + 2][x + 2][z]; }
 int& f(Vector3i v) { return f(v.x, v.y, v.z); }
 
+// Function to check if a tile is open and can be selected
 bool isOpen(int x, int y, int z)
 {
     for (int i = -1; i <= 1; i++)
@@ -44,7 +51,7 @@ int main(int argc, char* argv[])
         return 1;
     }
 
-    SDL_Window* window = SDL_CreateWindow("Mahjong Solitaire!", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 740, 570, SDL_WINDOW_SHOWN);
+    SDL_Window* window = SDL_CreateWindow("Majinso!", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 740, 570, SDL_WINDOW_SHOWN);
     if (!window)
     {
         cout << "SDL_CreateWindow Error: " << SDL_GetError() << endl;
@@ -75,17 +82,23 @@ int main(int argc, char* argv[])
     SDL_Rect backgroundRect = { 0, 0, 740, 570 };
     SDL_Rect tileRect = { 0, 0, 48, 66 };
 
+    Vector3i v1, v2; // Variables to store selected tile coordinates
+    std::vector<Vector3i> moves; // Vector to store selected moves
+
+    // Load map from file
     std::fstream myfile("files/map.txt");
     for (int y = 0; y < 18; y++)
         for (int x = 0; x < 30; x++)
         {
-            char a;  myfile >> a;
+            char a;
+            myfile >> a;
             int n = a - '0';
             for (int z = 0; z < n; z++)
                 if (f(x - 1, y - 1, z)) f(x - 1, y, z) = f(x, y - 1, z) = 0;
                 else f(x, y, z) = 1;
         }
 
+    // Create map
     for (int k = 1;; k++)
     {
         std::vector<Vector3i> opens;
@@ -103,13 +116,13 @@ int main(int argc, char* argv[])
         k %= 42;
     }
 
+    // Reverse the tiles to hide them
     for (int z = 0; z < 10; z++)
         for (int y = 0; y < 18; y++)
             for (int x = 0; x < 30; x++) f(x, y, z) *= -1;
 
     SDL_Event event;
     bool isRunning = true;
-    vector<Vector3i> moves; // Added moves vector
 
     while (isRunning)
     {
@@ -118,39 +131,30 @@ int main(int argc, char* argv[])
             if (event.type == SDL_QUIT)
                 isRunning = false;
 
-            if (event.type == SDL_MOUSEBUTTONDOWN)
+            // Handle mouse button press
+            if ((event.type == SDL_MOUSEBUTTONDOWN || event.type == SDL_FINGERDOWN) && event.button.button == SDL_BUTTON_LEFT)
             {
-                if (event.button.button == SDL_BUTTON_LEFT)
+                for (int z = 0; z < 10; z++)
                 {
-                    Vector3i v1(0, 0, 0), v2(0, 0, 0); 
-                    for (int z = 0; z < 10; z++)
+                    Vector2i pos = { event.button.x - 30, event.button.y }; // 30 - desk offset
+                    int x = (pos.x - z * 4.6) / 22;
+                    int y = (pos.y + z * 7.1) / 33;
+
+                    for (int i = 0; i < 2; i++)
+                        for (int j = 0; j < 2; j++)
+                            if (f(x - i, y - j, z) > 0 && isOpen(x - i, y - j, z))
+                                v1 = Vector3i(x - i, y - j, z);
+
+                    if (v1.x == v2.x && v1.y == v2.y && v1.z == v2.z)
+                        continue;
+
+                    int a = f(v1), b = f(v2);
+                    if (a == b || (a > 34 && a < 39 && b > 34 && b < 39) || (a >= 39 && b >= 39))
                     {
-                        Vector2i pos = { event.button.x - 30, event.button.y }; // 30 - desk offset
-                        int x = (pos.x - z * 4.6) / 22;
-                        int y = (pos.y + z * 7.1) / 33;
-
-                        for (int i = 0; i < 2; i++)
-                            for (int j = 0; j < 2; j++)
-                                if (f(x - i, y - j, z) > 0 && isOpen(x - i, y - j, z))
-                                    v1 = Vector3i(x - i, y - j, z);
-
-                        if (v1.x == v2.x && v1.y == v2.y && v1.z == v2.z) continue;
-
-                        int a = f(v1), b = f(v2);
-                        if (a == b || (a > 34 && a < 39 && b > 34 && b < 39) || (a >= 39 && b >= 39))
-                        {
-                            f(v1) *= -1; moves.push_back(v1);
-                            f(v2) *= -1; moves.push_back(v2);
-                        }
-                        v2 = v1;
+                        f(v1) *= -1; moves.push_back(v1);
+                        f(v2) *= -1; moves.push_back(v2);
                     }
-                }
-                else if (event.button.button == SDL_BUTTON_RIGHT)
-                {
-                    int n = moves.size();
-                    if (n == 0) continue;
-                    f(moves[n - 1]) *= -1; moves.pop_back();
-                    f(moves[n - 2]) *= -1; moves.pop_back();
+                    v2 = v1;
                 }
             }
         }
